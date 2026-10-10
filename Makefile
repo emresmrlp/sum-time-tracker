@@ -1,8 +1,9 @@
 APP_NAME = SumTimeTracker
+VERSION = 0.1.0
 APP_BUNDLE = $(APP_NAME).app
 MACOS_DIR = $(APP_BUNDLE)/Contents/MacOS
 RESOURCES_DIR = $(APP_BUNDLE)/Contents/Resources
-DMG_NAME = $(APP_NAME).dmg
+DMG_NAME = $(APP_NAME)-v$(VERSION).dmg
 DMG_STAGE = dmg_stage
 ICONSET_DIR = AppIcon.iconset
 

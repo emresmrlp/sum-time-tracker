@@ -40,6 +40,42 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] isTracking in
                 self?.updateIcon(isTracking: isTracking)
             }.store(in: &cancellables)
+            
+        let hasCompletedSetup = UserDefaults.standard.bool(forKey: "hasCompletedSetup")
+        if !hasCompletedSetup {
+            showWelcomeAlert()
+        } else {
+            showReadyAlert()
+        }
+    }
+    
+    func showReadyAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Sum Time Tracker is Ready"
+        alert.informativeText = "The application is running in the background. You can start the tracker from the menu bar icon in the top right corner."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
+    }
+    
+    func showWelcomeAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Welcome to Sum Time Tracker!"
+        alert.informativeText = "Sum Time Tracker is a menu bar application.\n\nYou can access and control the tracker strictly by clicking the timer icon in the top right corner of your screen (Menu Bar).\n\nPlease complete the initial setup to begin tracking your time."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Got it")
+        alert.addButton(withTitle: "GitHub Page")
+        
+        NSApp.activate(ignoringOtherApps: true)
+        let response = alert.runModal()
+        
+        if response == .alertSecondButtonReturn {
+            if let url = URL(string: "https://github.com/emresmrlp/sum-time-tracker") {
+                NSWorkspace.shared.open(url)
+            }
+        }
     }
     
     func updateIcon(isTracking: Bool) {
