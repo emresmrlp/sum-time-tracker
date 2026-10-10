@@ -52,7 +52,7 @@ struct SetupView: View {
                             .font(.system(size: 10, weight: .regular, design: .monospaced))
                             .foregroundColor(pureWhite)
                             .textFieldStyle(PlainTextFieldStyle())
-                            .onChange(of: settings.dataFolderPath) { newValue in
+                            .onChange(of: settings.dataFolderPath) { _, newValue in
                                 validatePath(newValue)
                             }
                         

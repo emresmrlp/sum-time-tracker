@@ -4,6 +4,7 @@ MACOS_DIR = $(APP_BUNDLE)/Contents/MacOS
 RESOURCES_DIR = $(APP_BUNDLE)/Contents/Resources
 DMG_NAME = $(APP_NAME).dmg
 DMG_STAGE = dmg_stage
+ICONSET_DIR = AppIcon.iconset
 
 SWIFT_FILES = $(wildcard Sources/*.swift)
 
@@ -14,6 +15,9 @@ build:
 	@mkdir -p "$(MACOS_DIR)"
 	@mkdir -p "$(RESOURCES_DIR)"
 	@cp Info.plist "$(APP_BUNDLE)/Contents/Info.plist"
+	@if [ -f "Assets/AppIcon.icns" ]; then \
+		cp "Assets/AppIcon.icns" "$(RESOURCES_DIR)/AppIcon.icns"; \
+	fi
 	@swiftc $(SWIFT_FILES) -o "$(MACOS_DIR)/$(APP_NAME)"
 	@echo "Build complete."
 

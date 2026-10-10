@@ -143,12 +143,20 @@ class TimeManager: ObservableObject {
         }
     }
     
-    func generateReport() {
+    enum ReportError: Error {
+        case alreadyExists
+    }
+    
+    func generateReport() throws {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd_HH-mm"
         let dateString = formatter.string(from: Date())
         let reportFileName = "Report_\(dateString).txt"
         let reportURL = dataFolderURL.appendingPathComponent(reportFileName)
+        
+        if FileManager.default.fileExists(atPath: reportURL.path) {
+            throw ReportError.alreadyExists
+        }
         
         var reportContent = """
         ========================================
