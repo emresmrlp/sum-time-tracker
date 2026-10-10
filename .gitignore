@@ -1,0 +1,5 @@
+CLAUDE.md
+*.dmg
+*.app
+dmg_stage
+.DS_Store
