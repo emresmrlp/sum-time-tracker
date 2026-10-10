@@ -385,6 +385,8 @@ struct ReportsView: View {
     let textMuted: Color
     
     @State private var showCopiedAlert = false
+    @State private var alertMessage = ""
+    @State private var isError = false
     
     var body: some View {
         VStack(spacing: 24) {
@@ -401,7 +403,15 @@ struct ReportsView: View {
             
             VStack(spacing: 8) {
                 Button(action: {
-                    timeManager.generateReport()
+                    do {
+                        try timeManager.generateReport()
+                        alertMessage = "Report saved to data folder"
+                        isError = false
+                    } catch {
+                        alertMessage = "Already created a report this minute!"
+                        isError = true
+                    }
+                    
                     withAnimation { showCopiedAlert = true }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                         withAnimation { showCopiedAlert = false }
@@ -423,9 +433,9 @@ struct ReportsView: View {
                 .buttonStyle(PlainButtonStyle())
                 
                 if showCopiedAlert {
-                    Text("Report saved to data folder")
+                    Text(alertMessage)
                         .font(.system(size: 10, weight: .regular))
-                        .foregroundColor(accentColor)
+                        .foregroundColor(isError ? .red : accentColor)
                         .transition(.opacity)
                 } else {
                     Text("")
