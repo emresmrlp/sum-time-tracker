@@ -4,7 +4,12 @@
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey.svg)
 ![Swift](https://img.shields.io/badge/swift-5.0-orange.svg)
 
-A beautiful, ultra-minimalist, and professional macOS time tracker that lives right in your menu bar. Built natively using Swift and SwiftUI, it helps you track your work hours effortlessly without cluttering your workspace.
+MacOS time tracker that lives right in your menu bar. Built natively using Swift and SwiftUI, it helps you track your work hours effortlessly without cluttering your workspace.
+
+
+<img width="357" height="559" alt="Screenshot 2026-10-10 at 14 53 42" src="https://github.com/user-attachments/assets/5a108613-3c6e-4568-81e5-3b059c33e7c2" />
+<img width="354" height="551" alt="Screenshot 2026-10-10 at 14 55 07" src="https://github.com/user-attachments/assets/1bfbd076-bc4b-4bdd-ab90-446a383a96a3" />
+<img width="349" height="550" alt="Screenshot 2026-10-10 at 14 54 17" src="https://github.com/user-attachments/assets/e8a30d43-692e-4fa3-8c6d-37292c4d5728" />
 
 ## Features
 
@@ -48,6 +53,3 @@ make clean
 
 ## Data Storage
 Your data is completely private and stored locally on your machine. By default, it is saved to a folder named `sum-time-tracker-data` in your home directory, but you can change this during the initial setup (or later via the settings menu).
-
-## License
-This project is open-source and available for personal or professional use.
