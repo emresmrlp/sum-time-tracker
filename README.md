@@ -9,7 +9,6 @@ MacOS time tracker that lives right in your menu bar. Built natively using Swift
 
 <img width="357" height="559" alt="Screenshot 2026-10-10 at 14 53 42" src="https://github.com/user-attachments/assets/5a108613-3c6e-4568-81e5-3b059c33e7c2" />
 <img width="354" height="551" alt="Screenshot 2026-10-10 at 14 55 07" src="https://github.com/user-attachments/assets/1bfbd076-bc4b-4bdd-ab90-446a383a96a3" />
-<img width="349" height="550" alt="Screenshot 2026-10-10 at 14 54 17" src="https://github.com/user-attachments/assets/e8a30d43-692e-4fa3-8c6d-37292c4d5728" />
 
 ## Features
 
