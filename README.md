@@ -1,6 +1,6 @@
 # Sum Time Tracker
 
-![Version](https://img.shields.io/badge/version-v0.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-v0.1.1-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey.svg)
 ![Swift](https://img.shields.io/badge/swift-5.0-orange.svg)
 
@@ -36,7 +36,7 @@ This project requires no complex Xcode setup to compile. It comes with a streaml
    ```bash
    make dmg
    ```
-4. The script will compile the Swift files, bundle the custom assets (including the `AppIcon.icns`), and generate a versioned DMG file (e.g., `SumTimeTracker-v0.1.0.dmg`).
+4. The script will compile the Swift files, bundle the custom assets (including the `AppIcon.icns`), and generate a versioned DMG file (e.g., `SumTimeTracker-v0.1.1.dmg`).
 5. Open the `.dmg` file and drag `SumTimeTracker.app` into the provided `Applications` shortcut folder.
 
 ### Cleaning the Build

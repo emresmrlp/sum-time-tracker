@@ -270,6 +270,9 @@ struct MainAppView: View {
         }
         .frame(width: 360, height: 560)
         .background(bgDark)
+        .onAppear {
+            timeManager.checkDayChange(forceRefresh: true)
+        }
     }
 }
 
@@ -373,6 +376,10 @@ struct DashboardView: View {
             
             Spacer()
         }
+        .id(timeManager.lastRefreshDate)
+        .onAppear {
+            timeManager.checkDayChange(forceRefresh: true)
+        }
     }
 }
 
@@ -447,6 +454,10 @@ struct ReportsView: View {
         .padding(.horizontal, 24)
         .padding(.top, 16)
         .padding(.bottom, 24)
+        .id(timeManager.lastRefreshDate)
+        .onAppear {
+            timeManager.checkDayChange(forceRefresh: true)
+        }
     }
 }
 

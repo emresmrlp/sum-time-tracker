@@ -1,5 +1,5 @@
 APP_NAME = SumTimeTracker
-VERSION = 0.1.0
+VERSION = 0.1.1
 APP_BUNDLE = $(APP_NAME).app
 MACOS_DIR = $(APP_BUNDLE)/Contents/MacOS
 RESOURCES_DIR = $(APP_BUNDLE)/Contents/Resources

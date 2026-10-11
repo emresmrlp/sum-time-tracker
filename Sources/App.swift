@@ -13,7 +13,7 @@ struct SumTimeTrackerApp: App {
     }
 }
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     var statusItem: NSStatusItem!
     var popover: NSPopover!
     var cancellables = Set<AnyCancellable>()
@@ -24,6 +24,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         popover = NSPopover()
         popover.contentSize = NSSize(width: 360, height: 560)
         popover.behavior = .transient
+        popover.delegate = self
         popover.contentViewController = NSHostingController(rootView: contentView)
         
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -92,6 +93,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if popover.isShown {
                 popover.performClose(sender)
             } else {
+                TimeManager.shared.checkDayChange(forceRefresh: true)
                 popover.show(relativeTo: button.bounds, of: button, preferredEdge: NSRectEdge.minY)
                 // Bring to front and activate when popover opens
                 NSApp.activate(ignoringOtherApps: true)
@@ -99,13 +101,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
+    func popoverWillShow(_ notification: Notification) {
+        TimeManager.shared.checkDayChange(forceRefresh: true)
+    }
+    
     func setupNotifications() {
         let workspaceNotificationCenter = NSWorkspace.shared.notificationCenter
         workspaceNotificationCenter.addObserver(self, selector: #selector(handleSleepOrShutdown), name: NSWorkspace.willSleepNotification, object: nil)
         workspaceNotificationCenter.addObserver(self, selector: #selector(handleSleepOrShutdown), name: NSWorkspace.willPowerOffNotification, object: nil)
+        workspaceNotificationCenter.addObserver(self, selector: #selector(handleWake), name: NSWorkspace.didWakeNotification, object: nil)
+        
+        NotificationCenter.default.addObserver(self, selector: #selector(handleDayChanged), name: .NSCalendarDayChanged, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleDayChanged), name: NSNotification.Name.NSSystemClockDidChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleDayChanged), name: NSNotification.Name.NSSystemTimeZoneDidChange, object: nil)
     }
     
     @objc func handleSleepOrShutdown() {
         TimeManager.shared.stopTracking()
+    }
+    
+    @objc func handleWake() {
+        TimeManager.shared.checkDayChange(forceRefresh: true)
+    }
+    
+    @objc func handleDayChanged() {
+        TimeManager.shared.checkDayChange(forceRefresh: true)
     }
 }

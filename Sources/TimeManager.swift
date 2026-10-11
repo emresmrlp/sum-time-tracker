@@ -15,12 +15,105 @@ class TimeManager: ObservableObject {
     @Published var isTracking = false
     @Published var currentSessionDuration: TimeInterval = 0
     @Published var sessions: [TimeSession] = []
+    @Published var lastRefreshDate: Date = Date()
     
     private var timer: Timer?
+    private var midnightTimer: Timer?
+    private var periodicTimer: Timer?
     private var currentStartTime: Date?
+    private var currentDayStart: Date = Calendar.autoupdatingCurrent.startOfDay(for: Date())
+    private var cancellables = Set<AnyCancellable>()
+    
+    private var calendar: Calendar {
+        Calendar.autoupdatingCurrent
+    }
     
     init() {
+        currentDayStart = calendar.startOfDay(for: Date())
         loadSessions()
+        scheduleMidnightTimer()
+        setupPeriodicCheck()
+        setupNotificationObservers()
+    }
+    
+    deinit {
+        timer?.invalidate()
+        midnightTimer?.invalidate()
+        periodicTimer?.invalidate()
+    }
+    
+    private func setupNotificationObservers() {
+        NotificationCenter.default.publisher(for: .NSCalendarDayChanged)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.checkDayChange(forceRefresh: true)
+            }.store(in: &cancellables)
+            
+        NotificationCenter.default.publisher(for: NSNotification.Name.NSSystemClockDidChange)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.checkDayChange(forceRefresh: true)
+            }.store(in: &cancellables)
+            
+        NotificationCenter.default.publisher(for: NSNotification.Name.NSSystemTimeZoneDidChange)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.checkDayChange(forceRefresh: true)
+            }.store(in: &cancellables)
+            
+        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.checkDayChange(forceRefresh: true)
+            }.store(in: &cancellables)
+    }
+    
+    private func scheduleMidnightTimer() {
+        midnightTimer?.invalidate()
+        midnightTimer = nil
+        let now = Date()
+        guard let nextMidnight = calendar.nextDate(after: now, matching: DateComponents(hour: 0, minute: 0, second: 0), matchingPolicy: .nextTime) else { return }
+        
+        let interval = max(1.0, nextMidnight.timeIntervalSince(now) + 0.2)
+        let timer = Timer(timeInterval: interval, repeats: false) { [weak self] _ in
+            self?.checkDayChange(forceRefresh: true)
+        }
+        midnightTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+    
+    private func setupPeriodicCheck() {
+        periodicTimer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] _ in
+            self?.checkDayChange()
+        }
+        if let periodicTimer = periodicTimer {
+            RunLoop.main.add(periodicTimer, forMode: .common)
+        }
+    }
+    
+    func checkDayChange(forceRefresh: Bool = false) {
+        let now = Date()
+        let todayStart = calendar.startOfDay(for: now)
+        let dayChanged = (todayStart != currentDayStart)
+        
+        if dayChanged || forceRefresh {
+            currentDayStart = todayStart
+            scheduleMidnightTimer()
+            
+            // If tracking was active across midnight, split the session so yesterday gets completed session
+            if dayChanged && isTracking, let startTime = currentStartTime, startTime < todayStart {
+                let yesterdaySession = TimeSession(startTime: startTime, endTime: todayStart, duration: todayStart.timeIntervalSince(startTime))
+                sessions.append(yesterdaySession)
+                saveSessions()
+                currentStartTime = todayStart
+                currentSessionDuration = now.timeIntervalSince(todayStart)
+            }
+            
+            lastRefreshDate = now
+            DispatchQueue.main.async {
+                self.objectWillChange.send()
+            }
+        }
     }
     
     func toggleTracking() {
@@ -33,13 +126,18 @@ class TimeManager: ObservableObject {
     
     func startTracking() {
         guard !isTracking else { return }
+        checkDayChange()
         isTracking = true
         currentStartTime = Date()
+        currentSessionDuration = 0
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self, let startTime = self.currentStartTime else { return }
+            guard let self = self else { return }
+            self.checkDayChange()
+            guard let startTime = self.currentStartTime else { return }
             self.currentSessionDuration = Date().timeIntervalSince(startTime)
         }
         RunLoop.main.add(timer!, forMode: .common)
+        lastRefreshDate = Date()
     }
     
     func stopTracking() {
@@ -49,65 +147,106 @@ class TimeManager: ObservableObject {
         timer = nil
         
         let endTime = Date()
-        let duration = endTime.timeIntervalSince(startTime)
-        
-        let newSession = TimeSession(startTime: startTime, endTime: endTime, duration: duration)
-        sessions.append(newSession)
+        let splitSessions = splitSessionIfNeeded(startTime: startTime, endTime: endTime)
+        sessions.append(contentsOf: splitSessions)
         saveSessions()
         
         currentSessionDuration = 0
         currentStartTime = nil
+        checkDayChange(forceRefresh: true)
+    }
+    
+    private func splitSessionIfNeeded(startTime: Date, endTime: Date) -> [TimeSession] {
+        guard endTime > startTime else { return [] }
+        var result: [TimeSession] = []
+        var currentStart = startTime
+        
+        while true {
+            let dayStart = calendar.startOfDay(for: currentStart)
+            guard let nextDayStart = calendar.date(byAdding: .day, value: 1, to: dayStart) else {
+                result.append(TimeSession(startTime: currentStart, endTime: endTime, duration: endTime.timeIntervalSince(currentStart)))
+                break
+            }
+            
+            if endTime <= nextDayStart {
+                result.append(TimeSession(startTime: currentStart, endTime: endTime, duration: endTime.timeIntervalSince(currentStart)))
+                break
+            } else {
+                result.append(TimeSession(startTime: currentStart, endTime: nextDayStart, duration: nextDayStart.timeIntervalSince(currentStart)))
+                currentStart = nextDayStart
+            }
+        }
+        return result
+    }
+    
+    // MARK: - Overlap Duration Calculation
+    func duration(from intervalStart: Date, to intervalEnd: Date) -> TimeInterval {
+        guard intervalEnd > intervalStart else { return 0 }
+        
+        var total: TimeInterval = 0
+        
+        for session in sessions {
+            let sStart = session.startTime
+            let sEnd = session.endTime
+            let overlapStart = max(sStart, intervalStart)
+            let overlapEnd = min(sEnd, intervalEnd)
+            if overlapEnd > overlapStart {
+                total += overlapEnd.timeIntervalSince(overlapStart)
+            }
+        }
+        
+        if isTracking, let currentStart = currentStartTime {
+            let now = Date()
+            let overlapStart = max(currentStart, intervalStart)
+            let overlapEnd = min(now, intervalEnd)
+            if overlapEnd > overlapStart {
+                total += overlapEnd.timeIntervalSince(overlapStart)
+            }
+        }
+        
+        return total
     }
     
     // MARK: - Current Periods
     func getTodayTotal() -> TimeInterval {
-        let calendar = Calendar.current
-        return sessions.filter { calendar.isDateInToday($0.startTime) }
-            .reduce(0) { $0 + $1.duration } + (isTracking ? currentSessionDuration : 0)
+        let now = Date()
+        let todayStart = calendar.startOfDay(for: now)
+        guard let tomorrowStart = calendar.date(byAdding: .day, value: 1, to: todayStart) else { return 0 }
+        return duration(from: todayStart, to: min(now, tomorrowStart))
     }
     
     func getWeeklyTotal() -> TimeInterval {
-        let calendar = Calendar.current
-        guard let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: Date()) else { return 0 }
-        return sessions.filter { $0.startTime >= oneWeekAgo }
-            .reduce(0) { $0 + $1.duration } + (isTracking ? currentSessionDuration : 0)
+        let now = Date()
+        guard let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: now) else { return 0 }
+        return duration(from: oneWeekAgo, to: now)
     }
     
     func getMonthlyTotal() -> TimeInterval {
-        let calendar = Calendar.current
-        guard let oneMonthAgo = calendar.date(byAdding: .month, value: -1, to: Date()) else { return 0 }
-        return sessions.filter { $0.startTime >= oneMonthAgo }
-            .reduce(0) { $0 + $1.duration } + (isTracking ? currentSessionDuration : 0)
+        let now = Date()
+        guard let oneMonthAgo = calendar.date(byAdding: .month, value: -1, to: now) else { return 0 }
+        return duration(from: oneMonthAgo, to: now)
     }
     
     // MARK: - Past Periods (for comparison)
     func getYesterdayTotal() -> TimeInterval {
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: Date())
+        let now = Date()
+        let todayStart = calendar.startOfDay(for: now)
         guard let yesterdayStart = calendar.date(byAdding: .day, value: -1, to: todayStart) else { return 0 }
-        
-        return sessions.filter { $0.startTime >= yesterdayStart && $0.startTime < todayStart }
-            .reduce(0) { $0 + $1.duration }
+        return duration(from: yesterdayStart, to: todayStart)
     }
     
     func getLastWeekTotal() -> TimeInterval {
-        let calendar = Calendar.current
-        let today = Date()
-        guard let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: today),
-              let twoWeeksAgo = calendar.date(byAdding: .day, value: -14, to: today) else { return 0 }
-        
-        return sessions.filter { $0.startTime >= twoWeeksAgo && $0.startTime < oneWeekAgo }
-            .reduce(0) { $0 + $1.duration }
+        let now = Date()
+        guard let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: now),
+              let twoWeeksAgo = calendar.date(byAdding: .day, value: -14, to: now) else { return 0 }
+        return duration(from: twoWeeksAgo, to: oneWeekAgo)
     }
     
     func getLastMonthTotal() -> TimeInterval {
-        let calendar = Calendar.current
-        let today = Date()
-        guard let oneMonthAgo = calendar.date(byAdding: .month, value: -1, to: today),
-              let twoMonthsAgo = calendar.date(byAdding: .month, value: -2, to: today) else { return 0 }
-        
-        return sessions.filter { $0.startTime >= twoMonthsAgo && $0.startTime < oneMonthAgo }
-            .reduce(0) { $0 + $1.duration }
+        let now = Date()
+        guard let oneMonthAgo = calendar.date(byAdding: .month, value: -1, to: now),
+              let twoMonthsAgo = calendar.date(byAdding: .month, value: -2, to: now) else { return 0 }
+        return duration(from: twoMonthsAgo, to: oneMonthAgo)
     }
     
     // MARK: - Storage & Reports
@@ -181,8 +320,7 @@ class TimeManager: ObservableObject {
 
         """
         
-        let calendar = Calendar.current
-        let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: Date())!
+        guard let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: Date()) else { return }
         let recentSessions = sessions.filter { $0.startTime >= oneWeekAgo }.sorted(by: { $0.startTime > $1.startTime })
         
         let sessionFormatter = DateFormatter()
