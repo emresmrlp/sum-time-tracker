@@ -3,3 +3,5 @@ CLAUDE.md
 *.app
 dmg_stage
 .DS_Store
+.build/
+.vscode/

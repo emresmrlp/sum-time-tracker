@@ -17,6 +17,7 @@ MacOS time tracker that lives right in your menu bar. Built natively using Swift
 - **Personalized Setup:** On the first launch, choose exactly where your time data is saved and pick an accent color from a curated 6-color palette to match your style.
 - **Ultra-Minimalist UI:** Designed with a sleek, dark-mode focused monochrome aesthetic, avoiding neon colors or unnecessary visual noise.
 - **Detailed Reports & Comparisons:** View your work hours for Today, This Week, and This Month, and instantly compare them with the previous day, week, and month.
+- **Calendar-Based Totals:** Weeks run from Monday at 00:00 to the following Monday at 00:00; months run from the first day to the first day of the next month, using your Mac's time zone. Comparisons show the complete previous calendar week or month. Past sessions remain saved when a new period starts.
 - **Generate Detailed Logs:** Export beautifully formatted `.txt` reports to your data folder. The app prevents accidental overwrites by ensuring you can only generate one safe report per minute. 
 - **Transparent Data:** Your sessions are saved in a highly readable `data.json` format using precise ISO8601 timestamps. Easily read, export, or parse your raw data with external analysis tools.
 - **Smart Pause:** The tracker automatically pauses and securely saves your session if your Mac goes to sleep, shuts down, or loses power.
@@ -38,6 +39,9 @@ This project requires no complex Xcode setup to compile. It comes with a streaml
    ```
 4. The script will compile the Swift files, bundle the custom assets (including the `AppIcon.icns`), and generate a versioned DMG file (e.g., `SumTimeTracker-v0.1.1.dmg`).
 5. Open the `.dmg` file and drag `SumTimeTracker.app` into the provided `Applications` shortcut folder.
+
+### Tests
+Run the calendar boundary regression tests with `make test`.
 
 ### Cleaning the Build
 To clean up the generated build files and the `.dmg`, run:

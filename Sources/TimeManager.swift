@@ -2,13 +2,6 @@ import Foundation
 import Combine
 import AppKit
 
-struct TimeSession: Codable, Identifiable {
-    var id = UUID()
-    var startTime: Date
-    var endTime: Date
-    var duration: TimeInterval
-}
-
 class TimeManager: ObservableObject {
     static let shared = TimeManager()
     
@@ -21,6 +14,7 @@ class TimeManager: ObservableObject {
     private var midnightTimer: Timer?
     private var periodicTimer: Timer?
     private var currentStartTime: Date?
+    private var currentSessionID = UUID()
     private var currentDayStart: Date = Calendar.autoupdatingCurrent.startOfDay(for: Date())
     private var cancellables = Set<AnyCancellable>()
     
@@ -106,6 +100,7 @@ class TimeManager: ObservableObject {
                 sessions.append(yesterdaySession)
                 saveSessions()
                 currentStartTime = todayStart
+                currentSessionID = UUID()
                 currentSessionDuration = now.timeIntervalSince(todayStart)
             }
             
@@ -129,6 +124,7 @@ class TimeManager: ObservableObject {
         checkDayChange()
         isTracking = true
         currentStartTime = Date()
+        currentSessionID = UUID()
         currentSessionDuration = 0
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
@@ -216,15 +212,11 @@ class TimeManager: ObservableObject {
     }
     
     func getWeeklyTotal() -> TimeInterval {
-        let now = Date()
-        guard let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: now) else { return 0 }
-        return duration(from: oneWeekAgo, to: now)
+        return total(for: .week)
     }
     
     func getMonthlyTotal() -> TimeInterval {
-        let now = Date()
-        guard let oneMonthAgo = calendar.date(byAdding: .month, value: -1, to: now) else { return 0 }
-        return duration(from: oneMonthAgo, to: now)
+        return total(for: .month)
     }
     
     // MARK: - Past Periods (for comparison)
@@ -236,20 +228,29 @@ class TimeManager: ObservableObject {
     }
     
     func getLastWeekTotal() -> TimeInterval {
-        let now = Date()
-        guard let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: now),
-              let twoWeeksAgo = calendar.date(byAdding: .day, value: -14, to: now) else { return 0 }
-        return duration(from: twoWeeksAgo, to: oneWeekAgo)
+        return total(for: .week, previous: true)
     }
     
     func getLastMonthTotal() -> TimeInterval {
+        return total(for: .month, previous: true)
+    }
+
+    private func total(for period: ReportingPeriod, previous: Bool = false) -> TimeInterval {
         let now = Date()
-        guard let oneMonthAgo = calendar.date(byAdding: .month, value: -1, to: now),
-              let twoMonthsAgo = calendar.date(byAdding: .month, value: -2, to: now) else { return 0 }
-        return duration(from: twoMonthsAgo, to: oneMonthAgo)
+        guard let interval = period.interval(containing: now, previous: previous) else { return 0 }
+        return duration(from: interval.start, to: min(now, interval.end))
     }
     
     // MARK: - Storage & Reports
+    func reportSessions(at now: Date = Date()) -> [TimeSession] {
+        var result = sessions
+        if isTracking, let start = currentStartTime, now > start {
+            result.append(TimeSession(id: currentSessionID, startTime: start, endTime: now,
+                                      duration: now.timeIntervalSince(start)))
+        }
+        return ReportAnalytics.snapshot(result, at: now)
+    }
+
     private var dataFolderURL: URL {
         return SettingsManager.shared.dataFolderURL
     }
@@ -267,6 +268,13 @@ class TimeManager: ObservableObject {
         }
     }
     
+    func reloadSessionsAfterSetup() {
+        guard !isTracking else { return }
+        sessions = []
+        loadSessions()
+        checkDayChange(forceRefresh: true)
+    }
+
     private func loadSessions() {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -309,11 +317,11 @@ class TimeManager: ObservableObject {
         
         [ THIS WEEK ]
         Current: \(formatTimeInterval(getWeeklyTotal()))
-        Last 7 Days: \(formatTimeInterval(getLastWeekTotal()))
+        Last Week: \(formatTimeInterval(getLastWeekTotal()))
         
         [ THIS MONTH ]
         Current: \(formatTimeInterval(getMonthlyTotal()))
-        Last 30 Days: \(formatTimeInterval(getLastMonthTotal()))
+        Last Month: \(formatTimeInterval(getLastMonthTotal()))
         ========================================
         
         [ RECENT SESSIONS (LAST 7 DAYS) ]

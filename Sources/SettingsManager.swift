@@ -17,12 +17,12 @@ class SettingsManager: ObservableObject {
     }
     
     let colorPalette: [Color] = [
-        Color(red: 0.16, green: 0.65, blue: 0.35), // Green
-        Color(red: 0.16, green: 0.50, blue: 0.85), // Blue
-        Color(red: 0.55, green: 0.35, blue: 0.85), // Purple
-        Color(red: 0.85, green: 0.35, blue: 0.35), // Red
-        Color(red: 0.85, green: 0.55, blue: 0.15), // Orange
-        Color(red: 0.35, green: 0.75, blue: 0.85)  // Cyan
+        Color(red: 0.22, green: 0.45, blue: 0.31), // Forest green
+        Color(red: 0.20, green: 0.43, blue: 0.60), // Blue
+        Color(red: 0.44, green: 0.32, blue: 0.63), // Purple
+        Color(red: 0.67, green: 0.30, blue: 0.28), // Terracotta
+        Color(red: 0.61, green: 0.40, blue: 0.12), // Amber
+        Color(red: 0.15, green: 0.47, blue: 0.48)  // Teal
     ]
     
     var currentAccentColor: Color {

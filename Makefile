@@ -8,18 +8,30 @@ DMG_STAGE = dmg_stage
 ICONSET_DIR = AppIcon.iconset
 
 SWIFT_FILES = $(wildcard Sources/*.swift)
+SWIFTC ?= swiftc
+SWIFT_FLAGS ?= -target $(shell uname -m)-apple-macosx13.0 -module-cache-path .build/module-cache
+
+.PHONY: all test build dmg clean
 
 all: build dmg
+
+test:
+	@mkdir -p .build
+	@$(SWIFTC) $(SWIFT_FLAGS) Sources/ReportingPeriod.swift Tests/ReportingPeriodTests.swift -o .build/ReportingPeriodTests
+	@.build/ReportingPeriodTests
+	@$(SWIFTC) $(SWIFT_FLAGS) Sources/ReportingPeriod.swift Sources/TimeSession.swift Sources/ReportAnalytics.swift Tests/ReportAnalyticsTests.swift -o .build/ReportAnalyticsTests
+	@.build/ReportAnalyticsTests
 
 build:
 	@echo "Building $(APP_NAME)..."
 	@mkdir -p "$(MACOS_DIR)"
 	@mkdir -p "$(RESOURCES_DIR)"
+	@mkdir -p .build
 	@cp Info.plist "$(APP_BUNDLE)/Contents/Info.plist"
 	@if [ -f "Assets/AppIcon.icns" ]; then \
 		cp "Assets/AppIcon.icns" "$(RESOURCES_DIR)/AppIcon.icns"; \
 	fi
-	@swiftc $(SWIFT_FILES) -o "$(MACOS_DIR)/$(APP_NAME)"
+	@$(SWIFTC) $(SWIFT_FLAGS) $(SWIFT_FILES) -o "$(MACOS_DIR)/$(APP_NAME)"
 	@echo "Build complete."
 
 dmg: build
@@ -33,4 +45,4 @@ dmg: build
 	@echo "DMG created: $(DMG_NAME)"
 
 clean:
-	@rm -rf "$(APP_BUNDLE)" "$(DMG_NAME)" "$(DMG_STAGE)"
+	@rm -rf "$(APP_BUNDLE)" "$(DMG_NAME)" "$(DMG_STAGE)" .build
